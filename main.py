@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 import firebirdsql
+from datetime import datetime
 
 app = FastAPI()
 
@@ -44,6 +45,31 @@ class Cliente(BaseModel):
     PERIODICIDADE: Optional[int] = None
     OBSERVACAO: Optional[str] = None
     INATIVO: bool  # Agora é um booleano
+
+class Pedido(BaseModel):
+    ID_PEDIDO: int
+    ID_CLIENTE: int
+    ID_VENDEDOR: Optional[int] = None
+    TIPO_PEDIDO: int
+    STATUS: int
+    ID_CAMPANHA: Optional[int] = None
+    QUANTIDADE_ITENS: int
+    VALOR_TOTAL: float
+    DESCONTO: float
+    OBSERVACAO: str = ''
+    DATA_PEDIDO: datetime = Field(default_factory=datetime.now)
+    DATA_ENTREGA_PREVISTA: Optional[datetime] = None
+    ID_ENDERECO_ENTREGA: Optional[int] = None
+    ID_FORMA_PAGAMENTO: Optional[int] = None
+    ID_PRAZO_PAGAMENTO: Optional[int] = None
+    ID_TRANSPORTADORA: Optional[int] = None
+    FRETE: Optional[float] = None
+    SEGURO: Optional[float] = None
+    URGENTE: bool
+    REQUER_APROVACAO: bool
+    ID_EMPRESA: int
+    ID_MOEDA: int
+
 
 @app.get("/test_db_connection")
 async def test_connection():
@@ -110,5 +136,76 @@ async def cadastrar_cliente(cliente: Cliente):
             return {"message": "Erro ao cadastrar cliente", "COD_RETORNO": cod_retorno}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao cadastrar cliente: {e}")
-# Você pode adicionar mais rotas aqui conforme necessário, usando o mesmo padrão.
 
+@app.post("/cadastrar_pedido")
+async def cadastrar_pedido(pedido: Pedido):
+    try:
+        conn = get_connection()  # Esta função deve ser definida para obter uma conexão com seu banco de dados
+        cursor = conn.cursor()
+        resultado_procedimento = cursor.callproc('POST_PEDIDO_V5', [
+            pedido.ID_PEDIDO,
+            pedido.ID_CLIENTE,
+            pedido.ID_VENDEDOR,
+            pedido.TIPO_PEDIDO,
+            pedido.STATUS,
+            pedido.ID_CAMPANHA,
+            pedido.QUANTIDADE_ITENS,
+            pedido.VALOR_TOTAL,
+            pedido.DESCONTO,
+            pedido.OBSERVACAO,
+            pedido.DATA_PEDIDO,
+            pedido.DATA_ENTREGA_PREVISTA,
+            pedido.ID_ENDERECO_ENTREGA,
+            pedido.ID_FORMA_PAGAMENTO,
+            pedido.ID_PRAZO_PAGAMENTO,
+            pedido.ID_TRANSPORTADORA,
+            pedido.FRETE,
+            pedido.SEGURO,
+            pedido.URGENTE,
+            pedido.REQUER_APROVACAO,
+            pedido.ID_EMPRESA,
+            pedido.ID_MOEDA
+        ])
+        conn.commit()
+
+        # Substitua esta linha pelo código que verifica o sucesso da operação
+        # baseando-se no seu procedimento armazenado específico.
+        cod_retorno = resultado_procedimento[-1]  # Assumindo que o código de retorno é o último elemento
+        if cod_retorno == 202:  # Substitua "algum_valor_para_sucesso" pelo valor correspondente
+            return {"message": "Pedido cadastrado com sucesso", "COD_RETORNO": cod_retorno}
+        else:
+            return {"message": "Erro ao cadastrar pedido", "COD_RETORNO": cod_retorno}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao cadastrar pedido: {e}")
+
+@app.post("/cadastrar_item_pedido")
+async def cadastrar_item_pedido(pedido: Pedido):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        resultado_procedimento = cursor.callproc('POST_PEDIDO_ITEM', [
+            pedido.ID_PEDIDO,
+            pedido.ID_ITEM,
+            pedido.ID_PRODUTO,
+            pedido.QUANTIDADE,
+            pedido.PRECO_UNITARIO,
+            pedido.DESCONTO,
+            pedido.OUTRAS_DESPESAS,
+            pedido.PRECO_TOTAL
+        ])
+        conn.commit()
+        # A resposta do procedimento armazenado normalmente é uma tupla, e o último elemento geralmente contém o código de retorno
+        cod_retorno = resultado_procedimento[-1]
+        # Verifique o código de retorno e responda de acordo
+        if cod_retorno == 202:
+            return {"message": "Item do pedido cadastrado com sucesso", "COD_RETORNO": cod_retorno}
+        elif cod_retorno == 412:
+            motivo = "Aqui você pode extrair o motivo da falha a partir do procedimento ou definir uma mensagem padrão"
+            return {"message": "Inconsistência nos dados do item do pedido", "COD_RETORNO": cod_retorno, "MOTIVO": motivo}
+        else:
+            # Handle other return codes as needed
+            return {"message": "Erro ao cadastrar item do pedido", "COD_RETORNO": cod_retorno}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao cadastrar item do pedido: {e}")
+
+# Você pode adicionar mais rotas aqui conforme necessário, usando o mesmo padrão.
