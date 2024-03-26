@@ -65,6 +65,9 @@ class Pedido(BaseModel):
     ID_EMPRESA: int
     ID_MOEDA: int
 
+
+#JWT Autentication
+
 class Token(BaseModel):
     access_token: str
     token_type: str
