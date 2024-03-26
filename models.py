@@ -33,6 +33,7 @@ class Cliente(BaseModel):
     INATIVO: bool = False
 
 class ItemPedido(BaseModel):
+    ID_PEDIDO: int
     ID_ITEM: int
     ID_PRODUTO: int
     QUANTIDADE: int

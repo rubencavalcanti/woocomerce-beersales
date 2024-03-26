@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from models import Cliente, Pedido
+from models import Cliente, Pedido, ItemPedido
 from typing import List, Optional
 import firebirdsql
 
@@ -124,52 +124,27 @@ async def cadastrar_pedido(pedido: Pedido):
 
 #cadastra os itens dos pedidos
 @app.post("/cadastrar_item_pedido")
-async def cadastrar_item_pedido(pedido: Pedido):
+async def cadastrar_item_pedido(pedidoItem: ItemPedido):
     try:
         conn = get_connection()  # Esta função deve ser definida para obter uma conexão com seu banco de dados
         cursor = conn.cursor()
-        cod_retorno = cursor.callproc('POST_PEDIDO_V5', [
-            pedido.ID_PEDIDO,
-            pedido.ID_CLIENTE,
-            pedido.ID_VENDEDOR,
-            pedido.TIPO_PEDIDO,
-            pedido.STATUS,
-            pedido.ID_CAMPANHA,
-            pedido.QUANTIDADE_ITENS,
-            pedido.VALOR_TOTAL,
-            pedido.DESCONTO,
-            pedido.OBSERVACAO,
-            pedido.DATA_PEDIDO,
-            pedido.DATA_ENTREGA_PREVISTA,
-            pedido.ID_ENDERECO_ENTREGA,
-            pedido.ID_FORMA_PAGAMENTO,
-            pedido.ID_PRAZO_PAGAMENTO,
-            pedido.ID_TRANSPORTADORA,
-            pedido.FRETE,
-            pedido.SEGURO,
-            pedido.URGENTE,
-            pedido.REQUER_APROVACAO,
-            pedido.ID_EMPRESA,
-            pedido.ID_MOEDA
-        ])
-        conn.commit()
 
-        for item in pedido.ITENS:
-            cod_retorno = cursor.callproc('POST_PEDIDO_ITEM', [
-                pedido.ID_PEDIDO,
-                item.ID_ITEM,
-                item.ID_PRODUTO,
-                item.QUANTIDADE,
-                item.PRECO_UNITARIO,
-                item.DESCONTO,
-                item.OUTRAS_DESPESAS,
-                item.PRECO_TOTAL
+        
+        cod_retorno = cursor.callproc('POST_PEDIDO_ITEM', [
+                pedidoItem.ID_PEDIDO,
+                pedidoItem.ID_ITEM,
+                pedidoItem.ID_PRODUTO,
+                pedidoItem.QUANTIDADE,
+                pedidoItem.PRECO_UNITARIO,
+                pedidoItem.DESCONTO,
+                pedidoItem.OUTRAS_DESPESAS,
+                pedidoItem.PRECO_TOTAL
             ])
-            conn.commit()
-        return {"message": "Pedido cadastrado com sucesso", "COD_RETORNO": cod_retorno}   
+        conn.commit()
+        return {"message": "CONEXÃO BEM ESTABELICIDA", "COD_RETORNO": cod_retorno}   
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao cadastrar pedido: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao conectar com banco: {e}")
     
 
     # try:
@@ -193,4 +168,3 @@ async def cadastrar_item_pedido(pedido: Pedido):
                     
     # except Exception as e:
     #     raise HTTPException(status_code=500, detail=f"Erro ao cadastrar item do pedido: {e}")
-    
