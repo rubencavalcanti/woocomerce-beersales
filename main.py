@@ -77,7 +77,10 @@ async def cadastrar_cliente(cliente: Cliente):
             ])
         conn.commit()
 
-        return {"message": "Cliente cadastrado com sucesso", "COD_RETORNO": cod_retorno}
+        if cod_retorno[0] == 202:
+            return {"message": "cliente cadastrado com sucesso", "COD_RETORNO": cod_retorno}   
+        else:
+            return {"message": "Houve um erro ao cadastrar o cliente", "COD_RETORNO": cod_retorno}
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao cadastrar cliente: {e}")
