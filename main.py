@@ -16,6 +16,23 @@ password = 'hfPJp@Sg'
 def get_connection():
     return firebirdsql.connect(host=host, port=port, database=database, user=user, password=password, charset='UTF8')
 
+def get_cliente_id(cpf: str) -> int:
+    try:
+        # Estabelecendo a conexão com o banco de dados
+        conn = get_connection()
+        cursor = conn.cursor()
+        # Executando a consulta SQL
+        cursor.execute("SELECT ID_CLIENTE FROM CLIENTE WHERE CPF_CNPJ = ?", (cpf,))
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if result:
+            return result[0]
+        else:
+            return None
+    except Exception as e:
+        print(f"Erro ao acessar o banco de dados: {e}")
+        return None
 
 @app.get("/test_db_connection")
 async def test_connection():
@@ -84,6 +101,15 @@ async def cadastrar_cliente(cliente: Cliente):
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao cadastrar cliente: {e}")
+
+#Busca o id_cliente pelo 
+@app.get("/buscar_cliente/{cpf}")
+async def buscar_cliente(cpf: str):
+    id_cliente = get_cliente_id(cpf)
+    if id_cliente is not None:
+        return {"ID_CLIENTE": id_cliente}
+    else:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
 
 #cadastra o pedido
 @app.post("/cadastrar_pedido")
