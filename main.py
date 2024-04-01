@@ -117,12 +117,16 @@ async def buscar_cliente(cpf: str):
 #cadastra o pedido
 @app.post("/cadastrar_pedido")
 async def cadastrar_pedido(pedido: Pedido):
+    
+    id_pedido = int(pedido.ID_PEDIDO)
+    id_cliente = int(pedido.ID_CLIENTE)
+    
     try:
         conn = get_connection()  # Esta função deve ser definida para obter uma conexão com seu banco de dados
         cursor = conn.cursor()
         cod_retorno = cursor.callproc('POST_PEDIDO_V5', [
-            pedido.ID_PEDIDO,
-            pedido.ID_CLIENTE,
+            id_pedido,
+            id_cliente,
             pedido.ID_VENDEDOR,
             pedido.TIPO_PEDIDO,
             pedido.STATUS,
