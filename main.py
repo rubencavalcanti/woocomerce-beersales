@@ -119,7 +119,7 @@ async def buscar_cliente(cpf: str):
 async def cadastrar_pedido(pedido: Pedido):
     
     id_pedido = int(pedido.ID_PEDIDO)
-    id_cliente = int(pedido.ID_CLIENTE)
+    id_cliente = pedido.ID_CLIENTE
     
     try:
         conn = get_connection()  # Esta função deve ser definida para obter uma conexão com seu banco de dados
