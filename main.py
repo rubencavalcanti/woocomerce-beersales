@@ -158,16 +158,24 @@ async def cadastrar_item_pedido(pedidoItem: ItemPedido):
         conn = get_connection()  # Esta função deve ser definida para obter uma conexão com seu banco de dados
         cursor = conn.cursor()
 
+        id_pedido = int(pedidoItem.ID_PEDIDO)
+        id_item = int(pedidoItem.ID_ITEM)
+        id_produto = int(pedidoItem.ID_PRODUTO)
+        quantidade = int(pedidoItem.QUANTIDADE)
+        preco_unitario = float(pedidoItem.PRECO_UNITARIO)
+        desconto = float(pedidoItem.DESCONTO)
+        outras_despesas = float(pedidoItem.OUTRAS_DESPESAS)
+        preco_total = float(pedidoItem.PRECO_TOTAL)
         
         cod_retorno = cursor.callproc('POST_PEDIDO_ITEM', [
-                pedidoItem.ID_PEDIDO,
-                pedidoItem.ID_ITEM,
-                pedidoItem.ID_PRODUTO,
-                pedidoItem.QUANTIDADE,
-                pedidoItem.PRECO_UNITARIO,
-                pedidoItem.DESCONTO,
-                pedidoItem.OUTRAS_DESPESAS,
-                pedidoItem.PRECO_TOTAL
+                id_pedido,
+                id_item,
+                id_produto,
+                quantidade,
+                preco_unitario,
+                desconto,
+                outras_despesas,
+                preco_total
             ])
         conn.commit()
         return {"message": "CONEXÃO BEM ESTABELICIDA", "COD_RETORNO": cod_retorno}   
