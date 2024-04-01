@@ -147,7 +147,8 @@ async def cadastrar_pedido(pedido: Pedido):
         conn.commit()
 
         if cod_retorno[0] == 202:
-            return {"message": "Pedido cadastrado com sucesso", "COD_RETORNO": cod_retorno}   
+            return print(cod_retorno)
+            # return {"message": "Pedido cadastrado com sucesso", "COD_RETORNO": cod_retorno}   
         else:
             return {"message": "Houve um erro ao cadastrar o pedido", "COD_RETORNO": cod_retorno} 
         
