@@ -65,19 +65,3 @@ class Pedido(BaseModel):
     REQUER_APROVACAO: bool = False
     ID_EMPRESA: int
     ID_MOEDA: int
-
-
-#JWT Autentication
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class TokenData(BaseModel):
-    username: Union[str, None] = None
-
-class User(BaseModel):
-    username: str
-
-class UserInDB(User):
-    hashed_password: str

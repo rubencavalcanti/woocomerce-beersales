@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field, EmailStr
-from typing import Optional
+from models import Cliente, Pedido, ItemPedido
+from typing import List, Optional
 import firebirdsql
-from datetime import datetime
+
 
 app = FastAPI()
 
@@ -16,135 +16,117 @@ password = 'hfPJp@Sg'
 def get_connection():
     return firebirdsql.connect(host=host, port=port, database=database, user=user, password=password, charset='UTF8')
 
-# Modelo Pydantic para o cliente
-class Cliente(BaseModel):
-    ID_EXTERNO: str
-    NOME: str
-    APELIDO: str
-    CPF_CNPJ: str
-    IE: Optional[str] = None
-    ENDERECO_RUA: str
-    ENDERECO_NUMERO: str
-    ENDERECO_COMPLEMENTO: Optional[str] = None
-    ENDERECO_CEP: str
-    ENDERECO_BAIRRO: str
-    ENDERECO_CIDADE: str
-    ENDERECO_UF: str
-    CONTATO_TELEFONE: str
-    CONTATO_CELULAR: Optional[str] = None
-    CONTATO_EMAIL: Optional[EmailStr] = None
-    CONTATO_OUTROS: Optional[str] = None
-    ID_EMPRESA: int
-    ID_VENDEDOR: Optional[int] = None
-    ID_TABELA_PRECO: Optional[int] = None
-    LIMITE_CREDITO: Optional[float] = None
-    ID_GRUPO_CLIENTE: Optional[int] = 1
-    ID_FORMA_PAGAMENTO: Optional[int] = None
-    ID_PRAZO: Optional[int] = None
-    DIA_ATENDIMENTO: Optional[int] = None
-    PERIODICIDADE: Optional[int] = None
-    OBSERVACAO: Optional[str] = None
-    INATIVO: bool  # Agora é um booleano
-
-class Pedido(BaseModel):
-    ID_PEDIDO: int
-    ID_CLIENTE: int
-    ID_VENDEDOR: Optional[int] = None
-    TIPO_PEDIDO: int
-    STATUS: int
-    ID_CAMPANHA: Optional[int] = None
-    QUANTIDADE_ITENS: int
-    VALOR_TOTAL: float
-    DESCONTO: float
-    OBSERVACAO: str = ''
-    DATA_PEDIDO: datetime = Field(default_factory=datetime.now)
-    DATA_ENTREGA_PREVISTA: Optional[datetime] = None
-    ID_ENDERECO_ENTREGA: Optional[int] = None
-    ID_FORMA_PAGAMENTO: Optional[int] = None
-    ID_PRAZO_PAGAMENTO: Optional[int] = None
-    ID_TRANSPORTADORA: Optional[int] = None
-    FRETE: Optional[float] = None
-    SEGURO: Optional[float] = None
-    URGENTE: bool
-    REQUER_APROVACAO: bool
-    ID_EMPRESA: int
-    ID_MOEDA: int
-
+def get_cliente_id(cpf: str) -> int:
+    try:
+        # Estabelecendo a conexão com o banco de dados
+        conn = get_connection()
+        cursor = conn.cursor()
+        # Executando a consulta SQL
+        cursor.execute("SELECT ID_CLIENTE FROM CLIENTE WHERE CPF_CNPJ = ?", (cpf,))
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if result:
+            return result[0]
+        else:
+            return None
+    except Exception as e:
+        print(f"Erro ao acessar o banco de dados: {e}")
+        return None
 
 @app.get("/test_db_connection")
 async def test_connection():
     try:
-        conn = get_connection()
+        get_connection() # Esta função deve ser definida para obter uma conexão com seu banco de dados
         return {"message": "Conexão bem-sucedida ao banco de dados"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao conectar ao banco de dados: {e}")
 
+# verifica se o cliente já existe
 @app.get("/verificar_cliente")
 async def verificar_cliente(cpf_cnpj: str):
     try:
-        conn = get_connection()
+        conn = get_connection() # Esta função deve ser definida para obter uma conexão com seu banco de dados
         cursor = conn.cursor()
         cursor.execute("SELECT ID_BEERSALES FROM GET_CLIENTE ('01.01.2000') WHERE CPF_CNPJ = ?", (cpf_cnpj,))
-        result = cursor.fetchone()
-        if result:
-            return {"message": "Cliente encontrado", "ID_BEERSALES": result[0]}
+        cod_retorno = cursor.fetchone()
+        
+        if cod_retorno[0] == None:
+            return {"message": "cliente encontrado com sucesso", "COD_RETORNO": cod_retorno}   
         else:
-            return {"message": "Cliente não encontrado"}
+            return {"message": "cliente nao cadastrado", "COD_RETORNO": cod_retorno}
+            
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao verificar o cliente: {e}")
+        raise HTTPException(status_code=500, detail=f"cliente nao cadastrado: {e}")
 
+#cadastra um novo cliente
 @app.post("/cadastrar_cliente")
 async def cadastrar_cliente(cliente: Cliente):
+    cliente_cpf = cliente.CPF_CNPJ.replace('.', '').replace('-', '')
     try:
-        conn = get_connection()
+        conn = get_connection() # Esta função deve ser definida para obter uma conexão com seu banco de dados
         cursor = conn.cursor()
         cod_retorno = cursor.callproc('POST_CLIENTE_V4', [
-            cliente.ID_EXTERNO,
-            cliente.NOME,
-            cliente.APELIDO,
-            cliente.CPF_CNPJ,
-            cliente.IE,
-            cliente.ENDERECO_RUA,
-            cliente.ENDERECO_NUMERO,
-            cliente.ENDERECO_COMPLEMENTO,
-            cliente.ENDERECO_CEP,
-            cliente.ENDERECO_BAIRRO,
-            cliente.ENDERECO_CIDADE,
-            cliente.ENDERECO_UF,
-            cliente.CONTATO_TELEFONE,
-            cliente.CONTATO_CELULAR,
-            cliente.CONTATO_EMAIL,
-            cliente.CONTATO_OUTROS,
-            cliente.ID_EMPRESA,
-            cliente.ID_VENDEDOR,
-            cliente.ID_TABELA_PRECO,
-            cliente.LIMITE_CREDITO,
-            cliente.ID_GRUPO_CLIENTE,
-            cliente.ID_FORMA_PAGAMENTO,
-            cliente.ID_PRAZO,
-            cliente.DIA_ATENDIMENTO,
-            cliente.PERIODICIDADE,
-            cliente.OBSERVACAO,
-            cliente.INATIVO  # Diretamente como um booleano
-        ])
+                cliente.ID_EXTERNO,
+                cliente.NOME,
+                cliente.APELIDO,
+                cliente_cpf,
+                cliente.IE,
+                cliente.ENDERECO_RUA,
+                cliente.ENDERECO_NUMERO,
+                cliente.ENDERECO_COMPLEMENTO,
+                cliente.ENDERECO_CEP,
+                cliente.ENDERECO_BAIRRO,
+                cliente.ENDERECO_CIDADE,
+                cliente.ENDERECO_UF,
+                cliente.CONTATO_TELEFONE,
+                cliente.CONTATO_CELULAR,
+                cliente.CONTATO_EMAIL,
+                cliente.CONTATO_OUTROS,
+                cliente.ID_EMPRESA,
+                cliente.ID_VENDEDOR,
+                cliente.ID_TABELA_PRECO,
+                cliente.LIMITE_CREDITO,
+                cliente.ID_GRUPO_CLIENTE,
+                cliente.ID_FORMA_PAGAMENTO,
+                cliente.ID_PRAZO,
+                cliente.DIA_ATENDIMENTO,
+                cliente.PERIODICIDADE,
+                cliente.OBSERVACAO,
+                cliente.INATIVO  # Diretamente como um booleano
+            ])
         conn.commit()
-        # Verifique o código de retorno e responda de acordo
-        if cod_retorno == 202:
-            return {"message": "Cliente cadastrado com sucesso", "COD_RETORNO": cod_retorno}
+
+        if cod_retorno[0] == 202:
+            return {"message": "cliente cadastrado com sucesso", "COD_RETORNO": cod_retorno}   
         else:
-            # Handle other return codes as needed
-            return {"message": "Erro ao cadastrar cliente", "COD_RETORNO": cod_retorno}
+            return {"message": "Houve um erro ao cadastrar o cliente", "COD_RETORNO": cod_retorno}
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao cadastrar cliente: {e}")
 
+#Busca o id_cliente pelo 
+@app.get("/buscar_cliente/{cpf}")
+async def buscar_cliente(cpf: str):
+    id_cliente = get_cliente_id(cpf)
+    if id_cliente is not None:
+        return {"ID_CLIENTE": id_cliente}
+    else:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+#cadastra o pedido
 @app.post("/cadastrar_pedido")
 async def cadastrar_pedido(pedido: Pedido):
+    
+    id_pedido = int(pedido.ID_PEDIDO)
+    id_cliente = pedido.ID_CLIENTE
+    
     try:
         conn = get_connection()  # Esta função deve ser definida para obter uma conexão com seu banco de dados
         cursor = conn.cursor()
-        resultado_procedimento = cursor.callproc('POST_PEDIDO_V5', [
-            pedido.ID_PEDIDO,
-            pedido.ID_CLIENTE,
+        cod_retorno = cursor.callproc('POST_PEDIDO_V5', [
+            id_pedido,
+            id_cliente,
             pedido.ID_VENDEDOR,
             pedido.TIPO_PEDIDO,
             pedido.STATUS,
@@ -168,44 +150,47 @@ async def cadastrar_pedido(pedido: Pedido):
         ])
         conn.commit()
 
-        # Substitua esta linha pelo código que verifica o sucesso da operação
-        # baseando-se no seu procedimento armazenado específico.
-        cod_retorno = resultado_procedimento[-1]  # Assumindo que o código de retorno é o último elemento
-        if cod_retorno == 202:  # Substitua "algum_valor_para_sucesso" pelo valor correspondente
-            return {"message": "Pedido cadastrado com sucesso", "COD_RETORNO": cod_retorno}
+        if cod_retorno[0] == 202:
+            return print(cod_retorno)
+            # return {"message": "Pedido cadastrado com sucesso", "COD_RETORNO": cod_retorno}   
         else:
-            return {"message": "Erro ao cadastrar pedido", "COD_RETORNO": cod_retorno}
+            return {"message": "Houve um erro ao cadastrar o pedido", "COD_RETORNO": cod_retorno} 
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao cadastrar pedido: {e}")
 
+#cadastra os itens dos pedidos
 @app.post("/cadastrar_item_pedido")
-async def cadastrar_item_pedido(pedido: Pedido):
+async def cadastrar_item_pedido(pedidoItem: ItemPedido):
     try:
-        conn = get_connection()
+        conn = get_connection()  # Esta função deve ser definida para obter uma conexão com seu banco de dados
         cursor = conn.cursor()
-        resultado_procedimento = cursor.callproc('POST_PEDIDO_ITEM', [
-            pedido.ID_PEDIDO,
-            pedido.ID_ITEM,
-            pedido.ID_PRODUTO,
-            pedido.QUANTIDADE,
-            pedido.PRECO_UNITARIO,
-            pedido.DESCONTO,
-            pedido.OUTRAS_DESPESAS,
-            pedido.PRECO_TOTAL
-        ])
-        conn.commit()
-        # A resposta do procedimento armazenado normalmente é uma tupla, e o último elemento geralmente contém o código de retorno
-        cod_retorno = resultado_procedimento[-1]
-        # Verifique o código de retorno e responda de acordo
-        if cod_retorno == 202:
-            return {"message": "Item do pedido cadastrado com sucesso", "COD_RETORNO": cod_retorno}
-        elif cod_retorno == 412:
-            motivo = "Aqui você pode extrair o motivo da falha a partir do procedimento ou definir uma mensagem padrão"
-            return {"message": "Inconsistência nos dados do item do pedido", "COD_RETORNO": cod_retorno, "MOTIVO": motivo}
-        else:
-            # Handle other return codes as needed
-            return {"message": "Erro ao cadastrar item do pedido", "COD_RETORNO": cod_retorno}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao cadastrar item do pedido: {e}")
 
-# Você pode adicionar mais rotas aqui conforme necessário, usando o mesmo padrão.
+        id_pedido = int(pedidoItem.ID_PEDIDO)
+        id_item = int(pedidoItem.ID_ITEM)
+        id_produto = int(pedidoItem.ID_PRODUTO)
+        quantidade = int(pedidoItem.QUANTIDADE)
+        preco_unitario = float(pedidoItem.PRECO_UNITARIO)
+        desconto = float(pedidoItem.DESCONTO)
+        outras_despesas = float(pedidoItem.OUTRAS_DESPESAS)
+        preco_total = float(pedidoItem.PRECO_TOTAL)
+        
+        cod_retorno = cursor.callproc('POST_PEDIDO_ITEM', [
+                id_pedido,
+                id_item,
+                id_produto,
+                quantidade,
+                preco_unitario,
+                desconto,
+                outras_despesas,
+                preco_total
+            ])
+        conn.commit()
+        
+        if cod_retorno[0] == 202:
+            return {"message": "CONEXÃO BEM ESTABELICIDA", "COD_RETORNO": cod_retorno}
+        else:
+            return {f"Erro ao conectar com banco: {e}"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao conectar com banco: {e}")
